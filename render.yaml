@@ -1,0 +1,32 @@
+services:
+  # Backend FastAPI Web Service
+  - type: web
+    name: rosteriq-api
+    runtime: python
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt && python -m alembic upgrade head"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "https://rosteriq-ui.onrender.com,http://localhost:5173,http://localhost:3000"
+      - key: ENVIRONMENT
+        value: production
+
+  # Frontend React Static Site
+  - type: static
+    name: rosteriq-ui
+    rootDir: frontend
+    buildCommand: "npm install -g pnpm && pnpm install && pnpm build"
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
