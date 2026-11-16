@@ -9,12 +9,16 @@ const rawBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').r
 const API_BASE = rawBase.endsWith('/api/v1') ? rawBase : `${rawBase}/api/v1`;
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(options?.headers as Record<string, string>),
+  };
+  if (options?.body) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const res = await fetch(`${API_BASE}${url}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
     ...options,
+    headers,
   });
 
   if (!res.ok) {
@@ -50,6 +54,9 @@ export const api = {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
+  deleteEmployee: (id: number) => fetchJson<{ message: string }>(`/employees/${id}`, {
+    method: 'DELETE',
+  }),
 
   // Pods
   getPods: () => fetchJson<Pod[]>('/pods'),
@@ -70,6 +77,9 @@ export const api = {
   createBrand: (data: Partial<Brand>) => fetchJson<Brand>('/brands', {
     method: 'POST',
     body: JSON.stringify(data),
+  }),
+  deleteBrand: (id: number) => fetchJson<{ message: string }>(`/brands/${id}`, {
+    method: 'DELETE',
   }),
 
   // Processes
@@ -154,7 +164,7 @@ export const api = {
   validateRoster: (period_id: number) => fetchJson<any>(`/rosters/${period_id}/validate`, {
     method: 'POST',
   }),
-  publishRoster: (period_id: number) => fetchJson<any>(`/rosters/${period_id}/publish`, {
+  publishRoster: (period_id: number, force: boolean = false) => fetchJson<any>(`/rosters/${period_id}/publish?force=${force}`, {
     method: 'POST',
   }),
   getRosterEntries: (params: { period_id?: number; employee_id?: number; roster_date?: string; brand_id?: number }) => {

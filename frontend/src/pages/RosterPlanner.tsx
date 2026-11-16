@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { RosterEntry, Employee, Brand, Pod } from '../types';
@@ -19,6 +20,8 @@ export const RosterPlanner: React.FC = () => {
   const [editReason, setEditReason] = useState<string>('');
   const [validationResult, setValidationResult] = useState<any>(null);
   const [publishMessage, setPublishMessage] = useState<string | null>(null);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [publishWarning, setPublishWarning] = useState<string | null>(null);
 
   // Queries
   const { data: rosterPeriods = [], isLoading: periodsLoading } = useQuery({
@@ -100,13 +103,15 @@ export const RosterPlanner: React.FC = () => {
   });
 
   const publishMutation = useMutation({
-    mutationFn: () => api.publishRoster(currentPeriod!.id),
+    mutationFn: (force?: boolean) => api.publishRoster(currentPeriod!.id, force ?? false),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['roster-periods'] });
-      setPublishMessage('Roster published successfully! Roster is now locked.');
+      setIsPublishModalOpen(false);
+      setPublishMessage(data.message || 'Roster published successfully! Roster is now locked.');
     },
     onError: (err: Error) => {
-      setPublishMessage(`Cannot publish: ${err.message}`);
+      setPublishWarning(err.message);
+      setIsPublishModalOpen(true);
     },
   });
 
@@ -239,7 +244,7 @@ export const RosterPlanner: React.FC = () => {
               </button>
 
               <button
-                onClick={() => publishMutation.mutate()}
+                onClick={() => publishMutation.mutate(false)}
                 disabled={publishMutation.isPending || currentPeriod.status === 'PUBLISHED'}
                 className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm disabled:opacity-50"
               >
@@ -483,6 +488,56 @@ export const RosterPlanner: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Force Publish Override Modal */}
+      {isPublishModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 border border-slate-200">
+            <div className="flex items-center gap-3 text-amber-600 mb-3">
+              <div className="h-10 w-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Roster Publishing Override</h3>
+                <p className="text-xs text-slate-500">Unresolved constraints or staffing gaps detected</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs mb-4 leading-relaxed">
+              <p className="font-semibold mb-1">Operational Notice:</p>
+              <p>{publishWarning || 'Operational coverage gaps or staffing constraints remain in this roster period.'}</p>
+            </div>
+
+            <p className="text-xs text-slate-600 mb-5 leading-relaxed">
+              As an Operations Lead, you can <strong>Force Publish & Lock</strong> this roster period with an administrative override, or review and resolve the gaps under <strong>Coverage & Conflicts</strong> first.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsPublishModalOpen(false)}
+                className="w-full sm:w-auto px-3.5 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
+              >
+                Cancel
+              </button>
+              <Link
+                to="/coverage-conflicts"
+                className="w-full sm:w-auto text-center px-3.5 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold"
+              >
+                Review Conflicts
+              </Link>
+              <button
+                type="button"
+                onClick={() => publishMutation.mutate(true)}
+                disabled={publishMutation.isPending}
+                className="w-full sm:w-auto px-4 py-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>{publishMutation.isPending ? 'Publishing...' : 'Force Publish & Lock'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

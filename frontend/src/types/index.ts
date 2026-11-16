@@ -75,6 +75,9 @@ export interface EmployeeAssignment {
   is_backup_resource: boolean;
   active: boolean;
   employee_name?: string;
+  employee_code?: string;
+  designation?: string;
+  pod_name?: string;
   brand_name?: string;
   process_name?: string;
 }
@@ -165,6 +168,9 @@ export interface ConflictRecord {
   resolved: boolean;
   created_at?: string;
   employee_name?: string;
+  employee_code?: string;
+  designation?: string;
+  pod_name?: string;
   brand_name?: string;
   process_name?: string;
 }
