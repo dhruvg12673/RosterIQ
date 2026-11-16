@@ -18,8 +18,9 @@ services:
         value: production
 
   # Frontend React Static Site
-  - type: static
+  - type: web
     name: rosteriq-ui
+    runtime: static
     rootDir: frontend
     buildCommand: "npm install -g pnpm && pnpm install && pnpm build"
     staticPublishPath: dist
