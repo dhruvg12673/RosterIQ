@@ -30,15 +30,22 @@ def list_assignments(
         query = query.filter(EmployeeAssignment.active == True)
     
     assignments = query.all()
+    emp_map = {e.id: e for e in db.query(Employee).all()}
+    brand_map = {b.id: b.brand_name for b in db.query(Brand).all()}
+    proc_map = {p.id: p.process_name for p in db.query(Process).all()}
+    from app.models.models import Pod
+    pod_map = {p.id: p.pod_name for p in db.query(Pod).all()}
+    
     result = []
     for a in assignments:
-        emp = db.query(Employee).filter(Employee.id == a.employee_id).first()
-        brand = db.query(Brand).filter(Brand.id == a.brand_id).first()
-        process = db.query(Process).filter(Process.id == a.process_id).first()
+        emp = emp_map.get(a.employee_id)
         r = EmployeeAssignmentResponse.model_validate(a)
         r.employee_name = emp.full_name if emp else None
-        r.brand_name = brand.brand_name if brand else None
-        r.process_name = process.process_name if process else None
+        r.employee_code = emp.employee_code if emp else None
+        r.designation = emp.designation if emp else None
+        r.pod_name = pod_map.get(emp.pod_id) if (emp and emp.pod_id) else None
+        r.brand_name = brand_map.get(a.brand_id)
+        r.process_name = proc_map.get(a.process_id)
         result.append(r)
     return result
 

@@ -88,6 +88,12 @@ def update_brand(brand_id: int, data: BrandUpdate, db: Session = Depends(get_db)
     brand = db.query(Brand).filter(Brand.id == brand_id).first()
     if not brand:
         raise HTTPException(status_code=404, detail="Brand not found")
+    
+    if data.brand_code and data.brand_code != brand.brand_code:
+        conflict = db.query(Brand).filter(Brand.brand_code == data.brand_code).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail="Brand code already exists")
+
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(brand, key, value)
@@ -97,10 +103,23 @@ def update_brand(brand_id: int, data: BrandUpdate, db: Session = Depends(get_db)
 
 
 @router.delete("/{brand_id}")
-def deactivate_brand(brand_id: int, db: Session = Depends(get_db)):
+def delete_brand(brand_id: int, db: Session = Depends(get_db)):
     brand = db.query(Brand).filter(Brand.id == brand_id).first()
     if not brand:
         raise HTTPException(status_code=404, detail="Brand not found")
-    brand.status = "INACTIVE"
+    
+    from app.models.models import (
+        BrandProcessRule, EmployeeAssignment, CoverageResult,
+        ConflictRecord, RosterEntryAssignment, PublicHolidayBrandException
+    )
+    db.query(PublicHolidayBrandException).filter(PublicHolidayBrandException.brand_id == brand_id).delete()
+    db.query(RosterEntryAssignment).filter(RosterEntryAssignment.brand_id == brand_id).delete()
+    db.query(CoverageResult).filter(CoverageResult.brand_id == brand_id).delete()
+    db.query(ConflictRecord).filter(ConflictRecord.brand_id == brand_id).delete()
+    db.query(EmployeeAssignment).filter(EmployeeAssignment.brand_id == brand_id).delete()
+    db.query(BrandProcessRule).filter(BrandProcessRule.brand_id == brand_id).delete()
+    
+    brand_name = brand.brand_name
+    db.delete(brand)
     db.commit()
-    return {"message": "Brand deactivated"}
+    return {"message": f"Brand {brand_name} deleted successfully"}

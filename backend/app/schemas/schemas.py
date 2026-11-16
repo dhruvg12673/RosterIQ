@@ -19,6 +19,7 @@ class EmployeeCreate(BaseModel):
 
 
 class EmployeeUpdate(BaseModel):
+    employee_code: Optional[str] = None
     full_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
@@ -92,6 +93,7 @@ class BrandCreate(BaseModel):
 
 class BrandUpdate(BaseModel):
     brand_name: Optional[str] = None
+    brand_code: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
 
@@ -221,6 +223,9 @@ class EmployeeAssignmentResponse(BaseModel):
     is_backup_resource: bool
     active: bool
     employee_name: Optional[str] = None
+    employee_code: Optional[str] = None
+    designation: Optional[str] = None
+    pod_name: Optional[str] = None
     brand_name: Optional[str] = None
     process_name: Optional[str] = None
 
@@ -394,6 +399,9 @@ class ConflictRecordResponse(BaseModel):
     resolved: bool
     created_at: Optional[datetime] = None
     employee_name: Optional[str] = None
+    employee_code: Optional[str] = None
+    designation: Optional[str] = None
+    pod_name: Optional[str] = None
     brand_name: Optional[str] = None
     process_name: Optional[str] = None
 

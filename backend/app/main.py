@@ -31,24 +31,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS setup: allows development origins and any deployed *.onrender.com frontend domain
-cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
-if "*" in cors_origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=cors_origins,
-        allow_origin_regex=r"https://.*\.onrender\.com",
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# Universal CORS setup: guarantees no CORS blocks across *.onrender.com and local environments
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 # Register API routes
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)

@@ -68,14 +68,18 @@ def validate_roster(period_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{period_id}/publish")
-def publish_roster(period_id: int, db: Session = Depends(get_db)):
+def publish_roster(
+    period_id: int,
+    force: bool = Query(False, description="Force publish even if conflicts exist"),
+    db: Session = Depends(get_db)
+):
     from app.services.scheduling.validator import validate_roster as do_validate
     validation = do_validate(db, period_id)
     
-    if not validation["can_publish"]:
+    if not validation["can_publish"] and not force:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot publish: {validation['critical_conflicts']} critical conflicts and {validation['unfilled_slots']} unfilled coverage slots remain."
+            detail=f"Validation notice: {validation['critical_conflicts']} critical conflicts and {validation['unfilled_slots']} unfilled coverage slots remain. Use Force Publish to proceed."
         )
     
     period = db.query(RosterPeriod).filter(RosterPeriod.id == period_id).first()
@@ -86,7 +90,11 @@ def publish_roster(period_id: int, db: Session = Depends(get_db)):
     period.status = "PUBLISHED"
     period.published_at = datetime.now()
     db.commit()
-    return {"message": "Roster published successfully", "status": "PUBLISHED"}
+    return {
+        "message": "Roster published and locked successfully!" + (" (Published with Operations Lead Override)" if not validation["can_publish"] else ""),
+        "status": "PUBLISHED",
+        "can_publish": validation["can_publish"]
+    }
 
 
 @router.get("/entries/list", response_model=List[RosterEntryResponse])

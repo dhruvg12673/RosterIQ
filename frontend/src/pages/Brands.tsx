@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { Brand } from '../types';
-import { Plus, Search, UserCheck, Layers, Trash2, AlertTriangle, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, UserCheck, Layers, Trash2, Pencil, AlertTriangle, AlertCircle, CheckCircle2, X } from 'lucide-react';
 
 export const Brands: React.FC = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -17,6 +18,13 @@ export const Brands: React.FC = () => {
     brand_name: '',
     brand_code: '',
     description: '',
+  });
+
+  const [editBrandFormData, setEditBrandFormData] = useState({
+    brand_name: '',
+    brand_code: '',
+    description: '',
+    status: 'ACTIVE',
   });
 
   const { data: brands = [], isLoading } = useQuery({
@@ -36,6 +44,21 @@ export const Brands: React.FC = () => {
     },
     onError: (err: any) => {
       setActionError(err.message || 'Failed to create brand');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Brand> }) =>
+      api.updateBrand(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['brands'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setEditingBrand(null);
+      setActionSuccess('Brand details updated successfully!');
+      setTimeout(() => setActionSuccess(null), 4000);
+    },
+    onError: (err: any) => {
+      setActionError(err.message || 'Failed to update brand');
     },
   });
 
@@ -65,6 +88,27 @@ export const Brands: React.FC = () => {
     e.preventDefault();
     setActionError(null);
     createMutation.mutate(formData);
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBrand) return;
+    setActionError(null);
+    updateMutation.mutate({
+      id: editingBrand.id,
+      data: editBrandFormData,
+    });
+  };
+
+  const startEditing = (brand: Brand) => {
+    setEditingBrand(brand);
+    setActionError(null);
+    setEditBrandFormData({
+      brand_name: brand.brand_name,
+      brand_code: brand.brand_code,
+      description: brand.description || '',
+      status: brand.status || 'ACTIVE',
+    });
   };
 
   const handleDelete = () => {
@@ -175,7 +219,7 @@ export const Brands: React.FC = () => {
                     <span className="font-mono text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                       {brand.brand_code}
                     </span>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                           isSingle
@@ -186,9 +230,16 @@ export const Brands: React.FC = () => {
                         {isSingle ? 'Single-Resource' : 'Multi-Resource'}
                       </span>
                       <button
+                        onClick={() => startEditing(brand)}
+                        title={`Edit ${brand.brand_name}`}
+                        className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-80 group-hover:opacity-100"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
                         onClick={() => setBrandToDelete(brand)}
                         title={`Delete ${brand.brand_name}`}
-                        className="p-1 rounded text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors opacity-80 group-hover:opacity-100"
+                        className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors opacity-80 group-hover:opacity-100"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -216,6 +267,87 @@ export const Brands: React.FC = () => {
           })
         )}
       </div>
+
+      {/* Edit Brand Modal */}
+      {editingBrand && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Edit D2C Brand</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Modify brand details and settings.</p>
+              </div>
+              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                {editingBrand.brand_code}
+              </span>
+            </div>
+
+            <form onSubmit={handleUpdate} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Brand Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editBrandFormData.brand_name}
+                  onChange={(e) => setEditBrandFormData({ ...editBrandFormData, brand_name: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Brand Code</label>
+                  <input
+                    type="text"
+                    required
+                    value={editBrandFormData.brand_code}
+                    onChange={(e) => setEditBrandFormData({ ...editBrandFormData, brand_code: e.target.value.toUpperCase() })}
+                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
+                  <select
+                    value={editBrandFormData.status}
+                    onChange={(e) => setEditBrandFormData({ ...editBrandFormData, status: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  value={editBrandFormData.description}
+                  onChange={(e) => setEditBrandFormData({ ...editBrandFormData, description: e.target.value })}
+                  className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                ></textarea>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingBrand(null)}
+                  className="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateMutation.isPending}
+                  className="px-4 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-sm transition-colors"
+                >
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Delete Brand Confirmation Modal */}
       {brandToDelete && (

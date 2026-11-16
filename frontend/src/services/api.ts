@@ -78,6 +78,10 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  updateBrand: (id: number, data: Partial<Brand>) => fetchJson<Brand>(`/brands/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
   deleteBrand: (id: number) => fetchJson<{ message: string }>(`/brands/${id}`, {
     method: 'DELETE',
   }),

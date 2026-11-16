@@ -85,6 +85,11 @@ def update_employee(employee_id: int, data: EmployeeUpdate, db: Session = Depend
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     
+    if data.employee_code and data.employee_code != employee.employee_code:
+        conflict = db.query(Employee).filter(Employee.employee_code == data.employee_code).first()
+        if conflict:
+            raise HTTPException(status_code=400, detail="Employee code already exists")
+
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(employee, key, value)
@@ -95,10 +100,30 @@ def update_employee(employee_id: int, data: EmployeeUpdate, db: Session = Depend
 
 
 @router.delete("/{employee_id}")
-def deactivate_employee(employee_id: int, db: Session = Depends(get_db)):
+def delete_employee(employee_id: int, db: Session = Depends(get_db)):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
-    employee.employment_status = "INACTIVE"
+    
+    # 1. Unset pod lead if they were a pod lead
+    db.query(Pod).filter(Pod.pod_lead_employee_id == employee_id).update({Pod.pod_lead_employee_id: None})
+    
+    # 2. Delete all related records
+    from app.models.models import (
+        EmployeeAssignment, LeaveRequest, WeeklyOffRule,
+        EmployeeAvailability, RosterEntry, RosterEntryAssignment
+    )
+    entry_ids = [e[0] for e in db.query(RosterEntry.id).filter(RosterEntry.employee_id == employee_id).all()]
+    if entry_ids:
+        db.query(RosterEntryAssignment).filter(RosterEntryAssignment.roster_entry_id.in_(entry_ids)).delete(synchronize_session=False)
+    
+    db.query(RosterEntry).filter(RosterEntry.employee_id == employee_id).delete()
+    db.query(EmployeeAssignment).filter(EmployeeAssignment.employee_id == employee_id).delete()
+    db.query(LeaveRequest).filter(LeaveRequest.employee_id == employee_id).delete()
+    db.query(WeeklyOffRule).filter(WeeklyOffRule.employee_id == employee_id).delete()
+    db.query(EmployeeAvailability).filter(EmployeeAvailability.employee_id == employee_id).delete()
+    
+    emp_name = employee.full_name
+    db.delete(employee)
     db.commit()
-    return {"message": "Employee deactivated"}
+    return {"message": f"Employee {emp_name} deleted successfully"}
