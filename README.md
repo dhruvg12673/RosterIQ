@@ -245,22 +245,3 @@ tests/test_scenarios.py::test_scenario_8_change_availability_post_roster_generat
 ```
 
 ---
-
-## 9. Render Deployment Instructions
-
-1. Push code to GitHub:
-   ```bash
-   git add .
-   git commit -m "feat: complete RosterIQ workforce platform"
-   git push origin main
-   ```
-2. Log into [Render Dashboard](https://dashboard.render.com/).
-3. Click **New +** -> **Blueprint**.
-4. Select the repository. Render will automatically parse `render.yaml` and create:
-   - `rosteriq-api`: FastAPI backend service with health checks on `/health`.
-   - `rosteriq-ui`: React frontend static site with SPA routing rewrites.
-5. In Render Environment Settings for `rosteriq-api`, set `DATABASE_URL` to your Neon PostgreSQL connection string:
-   ```
-   postgresql://user:password@ep-xyz.us-east-2.aws.neon.tech/rosteriq?sslmode=require
-   ```
-6. Deploy! Render will build the frontend, run database migrations, seed the database, and launch both services.
